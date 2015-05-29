@@ -1,0 +1,683 @@
+\documentclass[a4paper,spanish]{article}
+
+\usepackage[spanish,activeacute]{babel}
+\usepackage{moreverb}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{multicol}
+\usepackage{theorem,amsmath,amssymb,latexsym}
+\usepackage{enumerate}
+\usepackage{color}
+
+\oddsidemargin -0.5in
+\textwidth 7.2in
+\topmargin 0in
+\addtolength{\topmargin}{-.5in}
+\textheight 10in
+\parskip=2ex
+\pagestyle{fancy}
+\parindent=0cm
+%usar el segundo nivel de enumeracion con letras
+%\Rnewcommand{\labelenumii}{\alph{enumii}. }
+
+\newcommand{\Rv}{\marginpar{\textcolor{red}{$|$}}}
+\newcommand{\nohecho}{\marginpar{NO HECHO}}
+\newcommand{\note}[1]{\textcolor{red}{\textbf{#1}} \Rv}
+
+%espaciado
+\newcommand{\vsp}{\vspace{0.4cm}}
+\newcommand{\hsp}{\hspace*{0.12cm}}
+
+%comandos para el resumen
+\newcommand{\tab}{\hspace*{1cm}}
+\newcommand{\llamada}[1]{\begin{center} \bfseries #1 \mdseries \end{center}}
+\newcommand{\nota}[1]{\vsp\defi{Nota}{#1}\vsp}
+\newcommand{\R}[0]{\mathbb{R}}
+\newcommand{\N}[0]{\mathbb{N}}
+\newcommand{\norma}[1]{\left\|#1\right\|}
+\newcommand{\limite}[2]{\lim_{ #1 \rightarrow #2}}
+\newcommand{\D}[0]{\mathbf{D}}
+\newcommand{\He}[0]{\mathbf{H}}
+\newcommand{\comp}[0]{\circ}
+\newcommand{\parcial}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\eps}[0]{\varepsilon}
+\newcommand{\lthen}[0]{\Rightarrow}
+\newcommand{\liff}[0]{\Leftrightarrow}
+\newcommand{\piso}[1]{\left\lfloor{x}\right\rfloor}
+\newcommand{\error}[0]{{\cal E}}
+\newcommand{\Ode}[0]{{\cal O}}
+
+\newcommand{\caja}[1]{\noindent \fbox{\parbox{\textwidth}{#1}}}
+
+
+\newtheorem{teo}{Teorema}
+\newtheorem{lema}{Lema}
+\newtheorem{coro}{Corolario}
+\newtheorem{defi}{Definici\'on}
+\newtheorem{obs}{Observaci\'on}
+
+% proof
+\newenvironment{demo}{{\noindent \textbf{Demo: }}}{\hfill\rule{2mm}{2mm}\par}
+
+\newenvironment{items}{
+		\vspace*{-2\topsep}
+		\begin{itemize} 
+		\addtolength{\itemsep}{-0.5\baselineskip}
+		}{\end{itemize}\vspace*{-\topsep}}
+
+\lhead{Metodos Num\'ericos}
+\rhead{Apunte de repaso general}
+
+\cfoot{$\thepage$ de \pageref{theend}}
+
+\begin{document}
+Disclaimer: Este apunte no es autocontenido y fue pensado como un repaso 
+de los conceptos, no para aprenderlos de aqu'i directamente.
+
+%\begin{multicols}{2}\tableofcontents\end{multicols}
+
+\section{Aritm\'etica de la computadora}
+
+\textbf{Representaci'on en punto flotante}. Los n'umeros en punto flotante
+se representan como $s x b^y$ donde $b$ es una constante dada, $s$ es un bit
+de signo, $x$ es llamada mantisa y esta entre 0 y $b-1$ y $y$ es llamado
+exponente y es un entero. En la computadora usual se usa $b=2$ y la mantisa se
+representa solo la parte a partir del segundo d'igito decimal, ya que por
+convenci'on la mantisa empieza ``0.1...''. Esto se llama normalizaci'on.
+Esta representaci'on implica que la distribuci'on de los n'umeros no es
+del todo lineal, pero tampoco del todo logar'itmica, sino un h'ibrido entre
+ambas (i.e., entre cada par de potencias de 2 consecutivas hay la misma
+cantidad de n'umeros distribuidos uniformemente).
+
+\textbf{Errores}. El error absoluto de $A$ representado como $a$ se define
+como $|A-a|$ y el error relativo como $|A-a|/|A|$. \\
+El error del c'alculo de una funci'on $f(x_1,...,x_n)$ se define como
+$$\error(f(x_1,...,x_n)) = 
+	\error_f + \sum_{i=1}^n \frac{\parcial{f}{x_i}}{f} x_i \error(x_i),$$
+donde $\error_f$ es el error intr'inseco de hacer la operaci'on $f$ y 
+$\error(x_i)$ es el error de representaci'on de $x_i$.
+
+\textbf{Condici'on y estabilidad}. \\
+N'umero de condici'on: t'erminos que acompa'nan a los errores en las variables.
+(est'a bien condicionado si los n'umeros de condici'on son acotables por
+una constante). \\
+Estabilidad del algoritmo: t'erminos que acompa'nan a los errores de las
+operaciones (es estable si la estabilidad es acotable por una constante). \\
+Para dos algoritmos distintos que calculan la misma expresi'on aritm'etica
+los n'umeros de condici'on son iguales. La estabilidad no necesariamente.
+
+\vspace{0.8cm}
+
+\caja{\textbf{NOTA:}
+Para las pr'oximas secciones usaremos la siguiente notaci'on: Los problemas
+lineales se identifican con una matriz $A$ de $n \times n$ y un vector $b$ de 
+$n \times 1$. El problema entonces es buscar un vector $x$ de $n \times 1$ tal
+que $Ax = b$.}
+
+\section{Factorizaci\'on LU}
+
+La factorizaci'on LU sirve para resolver varios problemas lineales. Si el
+problema est'a dado por $Ax = b$, la idea es encontrar matrices 
+$L$ triangular inferior y $U$ triangular superior tales que 
+$LU = A$, de manera de resolver el sistema $LUx = b$. Esto 'ultimo
+es facil de hacer
+en 2 pasos: buscamos $x_0$ tal que $Lx_0 = b$, lo cual se puede hacer f'acil
+porque es un sistema lineal en el que la matriz es triangular. Luego buscamos
+$x$ tal que $Ux = x_0$, que es f'acil por la misma raz'on. De este modo, 
+$LUx = Lx_0 = b$, y el $x$ es efectivamente la soluci'on del sistema original. 
+La idea de la factorizaci'on es que puede obtenerse en el mismo tiempo
+necesario para resolver un sistema lineal $\Ode(n^3)$, pero una vez que se
+tiene resolver un problema $Ax = b_i$ para cualquier $b_i$ puede hacerse en
+$\Ode(n^2)$ como ya fue descripto. Esto quiere decir que si uno tiene que
+resolver $k$ problemas $Ax = b_i (1 \leq i \leq k)$ haciendo $k$
+eliminaciones gaussianas tarda $\Ode(n^3k)$, pero haciendo la factorizaci'on
+$LU$ de $A$ tarda $\Ode(n^3 + n^2k)$ lo cual es siempre mejor o igual (en
+particular notemos que si $k=1$, no estamos perdiendo nada de complejidad por
+hacer la factorizaci'on en lugar de la eliminaci'on gaussiana directamente).
+
+Para desambiguar a veces se pide que la diagonal de $L$ sean solo unos 
+(factorizaci'on de Doolittle) o la diagonal de $U$ solo unos (factorizaci'on
+de Crout).
+
+\textbf{Eliminaci'on Gaussiana}. La eliminaci'on gaussiana es un m'etodo para
+resolver problemas lineales. En particular tambi'en sirve para producir una
+factorizaci'on $LU$. Aqu'i describiremos la eliminaci'on utilizada para hacer
+dicha factorizaci'on, asumiendo que no es necesario pivoteo. En particular
+produciremos la factorizaci'on de Doolittle (es decir, $L$ con unos en la
+diagonal). \\
+La idea de la eliminaci'on es encontrar dos sucesiones de matrices
+$L^{(k)}$ y $U^{(k)}$ tal que para todo $L^{(n)}U^{(n)}=A$ y $L^{(n)}$
+es triangular inferior y $U^{(n)}$ triangular superior. Como invariante
+adicional tomaremos que para todo $k$ $L^{(k)}U^{(k)}=A$, y para $i < j < k$
+se cumple $U^{(k)}_{i,j} = 0$, es decir, $U^{(k)}$ tiene las primeras $k$
+columnas sin $0$s abajo de la diagonal, y $L^{(k)}$ es siempre triangular
+inferior con unos en la diagonal. Notemos que si $k=n$ el invariante implica 
+la postcondici'on. Las sucesiones de matrices se construyen seg'un el siguiente
+algoritmo: \\
+\caja{Sean $L^{(1)} = I$ y $U^{(1)} = A$ \\
+para $k = 2$ hasta $n$ \\
+\tab \textit{aqu'i asumiremos que $U^{(k-1)}_{k-1,k-1} \neq 0$ (no es
+	necesario pivoteo)} \\
+\tab Sea las matrices $M$ y $M^{-1}$ de $n \times n$ e inversas entre s'i dadas
+por:
+$$M_{i,j} = \begin{cases}
+	1 & i = j \\
+	-U^{(k-1)}_{i,k} / U^{(k-1)}_{k,k} &  i > k \mbox{ y } j = k\\
+	0 & \mbox{ en otro caso}
+\end{cases} 
+\hspace{1cm}
+M^{-1}_{i,j} = \begin{cases}
+	1 & i = j \\
+	U^{(k-1)}_{i,k} / U^{(k-1)}_{k,k} &  i > k \mbox{ y } j = k\\
+	0 & \mbox{ en otro caso}
+\end{cases}$$
+\tab Sean $L^{(k)} = L^{(k-1)}M^{-1}$ y $U^{(k)} = MU^{(k-1)}$}
+Notemos que $L^{(1)}U^{(1)} = A$ trivialmente y que $L^{(k)}U^{(k)} = 
+L^{(k-1)}M^{-1}MU^{(k-1)} = L^{(k-1)}U^{(k-1)} = A$ por lo cual el invariante
+se conserva. El hecho de que $L^{(k)}$ es siempre triangular superior y 
+$U^{(k)}$ lo es en sus primeras $k$ columnas sale de observar la forma que toma
+la multiplicaci'on por $M^{-1}$ y $M$ respectivamente (en el caso de $L$ es
+producto de dos matrices triangular inferior, en el caso de $U$ se ve como
+la multiplicaci'on solo cambia filas por debajo de la $k-'esima$ y siempre
+manteniendo las columnas menores a $k$ intactas y anulando la columna $k$). \\
+Es importante notar que las matrices $L^{(k)}$ y $U^{(k)}$ pueden ir
+guardandose todas en el mismo espacio de $n \times n$. A su vez, la matriz $M$
+puede guardarse utilizando solo $\Ode(n)$ espacio y los productos de $L$ o $U$
+por $M$ o $M^{-1}$ realizados consiguientemente en $\Ode(n^2)$. De este modo,
+todo el proceso utiliza solo $n^2 + \Ode(n)$ memoria y se realiza en
+$\Ode(n^3)$ tiempo.
+
+\textbf{Factorizaci'on $PA=LU$}. Si la eliminaci'on Gaussiana precisara de
+pivoteo, y lo conocemos de antemano (o lo calculamos), podemos factorizar
+$PA=LU$ con $P$ la matriz de permutaci'on que hace los intercambios de fila
+necesarios para pivotear la eliminaci'on Gaussiana. Esto tambi'en conduce a
+una eficiente resoluci'on de los sistemas $Ax= b_i$, ya que $P$, por ser de
+permutaci'on, es trivialmente inversible.
+
+\textbf{Propiedad de existencia}. Si las $n$ submatrices principales de $A$
+son no singulares, entonces $A$ tiene factorizaci'on $LU$.
+
+\section{Factorizaci\'on QR}
+
+Una matriz $Q$ de $n \times n$ es ortogonal si todas sus columnas tienen
+norma $1$ y el producto interno de 2 distintas de ellas es $0$. En particular
+cumplen $QQ^t = Q^tQ = I$ y por lo tanto se cumple lo mismo para las filas.
+
+La factorizaci'on $QR$ de una matriz consiste en, dada $A$, encontrar $Q$
+ortogonal y $R$ triangular superior tal que $QR = A$. De esta manera, para
+resolver el sistema $Ax = b$ debemos resolver $QRx = b$ o equivalentemente
+$Rx = Q^{-1}b = Q^t b$, cosa que podemos hacer f'acilmente (si es posible) 
+ya que $R$ es triangular. Para todo $A$ existe la factorizaci'on $QR$.
+
+La factorizaci'on es conveniente para resolver varios sistemas de la forma
+$Ax = b_i$ para varios $b_i$, ya que solo hace falta computar la factorizaci'on
+una vez (porque $A$ est'a fijo) y luego se puede resolver cada sistema en 
+$\Ode(n^2)$ en lugar del $\Ode(n^3)$ para resolver un sistema en general.
+
+Para los m'etodos de obtener una factorizaci'on $QR$ es importante notar que
+el producto de matrices ortogonales es ortogonal.
+
+\textbf{Transformaci'on de Givens}. La idea es ir multiplicando $A$
+sucesivamente por matrices de rotaci'on (que son ortogonales) hasta que se
+convierta en $R$. El producto de las inversas de las rotaciones es, por lo
+tanto, $Q$. Para que $Q^t$ sea una rotaci'on debe ser, para ciertos $p,q$:
+$$Q^t_{i,j} = \begin{cases}
+1 & i = j \notin \{p,q\} \\
+0 & i \neq j \land \{i,j\} \neq \{p,q\} \\
+\cos \theta & i = j \in \{p,q\} \\
+\sen \theta & i = p, j = q \\
+-\sen \theta & i = q, j = p \\
+\end{cases}
+\hspace{0.5cm}
+\mbox{por ejemplo, para } p=2 \mbox{ y } q=5 \mbox{:}
+\left(
+\begin{array}{ccccc}
+1 & 0 & 0 & 0 & 0\\
+0 & \cos \theta & 0 & 0 & \sen \theta \\
+0 & 0 & 1 & 0 & 0 \\
+0 & 0 & 0 & 1 & 0 \\
+0 & -\sen \theta & 0 & 0 & \cos \theta \\
+\end{array}
+\right)
+$$
+En particular queremos $\theta$ tal que provoque un cero particular en la
+matriz $A$. Miremos por ejemplo el caso de $2 \times 2$:
+$$\left(
+\begin{array}{cc}
+\cos \theta & \sen \theta \\
+-\sen \theta & \cos \theta \\
+\end{array}\right)
+\left(\begin{array}{l}
+x_1 \\ x_2
+\end{array}\right)
+=
+\left(\begin{array}{l}
+* \\ 0
+\end{array}\right)
+\lthen
+\begin{cases}
+\begin{array}{rcl}
+\cos \theta x_1 + \sen \theta x_2 &=& * \\
+-\sen \theta x_1 + \cos \theta x_2 &=& 0 \\
+\end{array}
+\end{cases}
+$$
+y luego tomo como soluci'on $\sen \theta = x_2 / \norma{(x_1,x_2)}$ y $
+\cos \theta = x_1 / \norma{(x_1,x_2)}$ resulta que 
+$$Q^t = \frac{1}{\norma{(x_1,x_2)}} \left(\begin{array}{cc}
+x_1 & x_2 \\
+-x_2 & x_1 \\
+\end{array}\right)$$
+produce el cero que quer'iamos. Podemos generalizar esto a $Q$ de $n \times n$
+reemplazando $\sen \theta = A_{q,p}$ y $\cos \theta = A_{p,p}$ en la
+definici'on original de $Q^t$. Haciendo eso iterativamente para cada $p,q$
+donde precisemos un cero nos da la factorizaci'on:
+\caja{
+Sea $Q^* = I$ \\
+Sea $R = A$ \\
+para $q = 1$ hasta $n$ \\
+\tab para $p = q+1$ hasta $n$ \\
+\tab\tab Sea $Q^t$ como fue definido arriba para $p,q$. \\
+\tab\tab $Q^* = Q^* Q$ \\
+\tab\tab $R = Q^t R$
+}
+El invariante es que $Q^*R = A$, que se mantiene porque en cada paso
+multiplico en medio de ambos por $QQ^t = I$. $Q^*$ es siempre ortogonal por
+ser producto de ortogonales y $R$ mantiene ceros en las posiciones $p,q$ por
+las que ya se pas'o. Al final del algoritmo, $R$ tiene ceros en todas las
+posiciones debajo de la diagonal. Dado que las matrices $Q$ y $Q^t$ se pueden
+tienen solo 4 elementos distintos a la identidad y que
+los productos pueden hacerse por lo tanto en $\Ode(n)$ el tiempo total del
+algoritmo de factorizaci'on es $\Ode(n^3)$.
+
+\textbf{Transformaci'on de Householder}. La idea es usar reflexiones respecto
+de rectas que pasan por el $0$, que tambi'en pueden verse como productos de
+matrices ortogonales. En particular, si queremos reflejar por la recta $v$:
+sea $u$ perpendicular a $v$ ($u^tv = 0$) de norma $1$. Si la reflexi'on est'a
+dada por la matriz $Q$ queremos: $Qu = -u$ y $Qv = v$. Observemos que tomando
+$Q = I - 2uu^t$ esto se cumple ya que $Qu = (I-2uu^t)u = u - 2u(u^tu) = 
+u - 2u \norma{u} = -u$ y $Qv = (I-2uu^t)v = v - 2u(u^tv) = v$. \\
+La idea para factorizar es generar ceros en una columna por vez, generando
+matrices $Q^t_p$ que al multiplicarlas por $A$ dejan ceros en la columna $p$,
+dejando intactas las columnas anteriores a $p$. De esta manera, 
+$R = \prod_{p=n}^1 Q^t_p A$ y $Q = \prod_{p=1}^n Q_p$. Es claro que $QR = A$.
+Como utilizamos reflexiones, generar ceros en una columna debe modificar alg'un
+otro elemento, para mantener fija la norma de la columna. En particular,
+modificaremos la diagonal. Sea $x_1,...,x_n$ la columna $p$ a modificar.
+Queremos como resultado $y_i=x_i$ si $i<p$ y $y_i=0$ si $i>p$, por lo cual
+resulta $y_p = \norma{(x_p,x_{p+1},...,x_n)}$. Ahora que sabemos que queremos
+mandar el punto $x$ al $y$, solo debemos escoger la recta $v$ y luego una
+perpendicular $u$ de norma $1$. La recta que une $x$ con $y$, $x-y$ es
+perpendicular al eje de reflexi'on por su definici'on, por lo tanto nos sirve.
+Para que sea de norma $1$, simplemente lo normalizamos y usamos 
+$u_p=(x-y)/\norma{x-y}$. Definamos entonces $Q^t_p$ seg'un los siguientes
+bloques:
+$$Q^t_p = \left(\begin{array}{cc}
+I_{p-1 \times p-1} & 0 \\
+0 & I_{n-p+1 \times n-p+1} - 2u_p u_p^t
+\end{array}\right)$$
+donde $u_p$ es como fue descripto anteriormente.
+Se ve que las matrices $Q^t_p$ y $Q_p$ pueden ser representada simplemente 
+como el vector $u_p$ de tama~no $n$ y por lo tanto podemos resolver sus
+productos por otras matrices en $\Ode(n^2)$. Dado que tenemos $\Ode(n)$ de
+esos productos, la complejidad total resultante para hayar la factorizaci'on
+es de $\Ode(n^3)$.
+
+\textbf{Propiedad de existencia y unicidad}. Si $A$ es no singular entonces
+existen 'unicas matrices $Q$ ortogonal y $R$ triangular superior tal que
+la diagonal de $R$ consta solo de elementos estrictamente positivos.
+
+\section{Resoluci\'on de sistemas con matrices especiales}
+
+\textbf{Matriz estrictamente diagonal dominante}. Llamamos as'i a una matriz
+$A$ cuando $2A_{i,i} > \sum_{j=1}^n |A_{i,j}|$. En estos casos, $A$ es no
+singular y no es necesario pivoteo al hacer Gauss, por lo cual tiene
+factorizaci'on $LU$.
+
+\textbf{Matrices banda}. Llamamos matriz banda $pq$ a $A$ cuando $A_{i,j} = 0$
+siempre que $i+p \leq j$ y $j+q \leq i$. En particular, si $A$ tiene
+factorizaci'on $LU$, $L$ tiene banda $q$, $U$ tiene banda $p$ y la eliminaci'on
+gaussiana para encontrar la factorizaci'on se puede hacer en $\Ode(npq)$.
+
+\textbf{Matrices sim'etricas}. Una matriz $A$ es sim'etrica si $A = A^t$. En
+este caso la factorizaci'on $LU$ de $A$ (si es que existe) puede escribirse
+en t'erminos de $L$ y una matriz diagonal $A = LU = LD(L^t)$. Si aparte la
+matriz es definida positiva podemos estar seguros que tiene factorizaci'on
+$LU$ y aparte la podemos descomponer como $L'(L')^t$ tomando $L' = LD^{1/2}$.
+
+\section{Inestabilidad num\'erica al resolver sistemas lineales}
+
+Al resolver sistemas lineales se pueden presentar problemas num'ericos. Estos
+a veces pueden ser resueltos o minimizados mejorando la forma de resolverlo.
+
+\textbf{Eliminaci'on Gaussiana}. Durante la eliminaci'on gaussiana a veces hay
+``necesidad'' de pivotear por encontrar un $0$ en la diagonal. Dado que
+podemos pivotear, a veces puede convenirnos num'ericamente hacerlo, mas all'a
+de que no sea matem'aticamente necesario. En particular, intentaremos que el
+n'umero sobre la diagonal (por el que vamos a dividir) sea lo mas grande
+posible en valor absoluto, ya que sabemos que dividir por n'umeros cercanos a
+cero es problem'atico num'ericamente. Denominamos \emph{pivoteo parcial} a 
+buscar el mejor coeficiente dentro de la columna correspondiente. Denominamos
+\emph{pivoteo total} a buscarlo en toda la submatriz que queda a la derecha
+y abajo del coeficiente actual (necesitando un intercambio de filas y uno de
+columnas).
+
+\textbf{N'umeros de condici'on}. Denominamos el n'umero de condici'on de una
+matriz $A$ a $K(A) = \norma{A} \norma{A^{-1}} \geq 1$. Este n'umero esta
+relacionado con cu'an problem'atico num'ericamente es resolver un sistema con
+matriz $A$: mientras mas grande sea, mas problem'atico. Esto se ilustra con
+la siguiente propiedad: \\
+Propiedad: Sea $\bar{x}$ soluci'on aproximada de $Ax = b$ con $A$ no singular
+y residuo $r = b - A\bar{x}$. Podemos acotar el error absoluto y relativo de
+la soluci'on de la siguiente manera:
+\begin{items}
+\item $\norma{x-\bar{x}} \leq \norma{r} \norma{A^{-1}}$
+\item $\norma{x-\bar{x}} / \norma{x} \leq K(A) \norma{r} / \norma{b}$
+\end{items}
+
+\section{M\'etodos iterativos para sistemas lineales}
+
+Los m'etodos iterativos para solucionar sistemas lineales generan una sucesi'on
+de soluciones aproximadas $x_n$ que bajo ciertas condiciones converge a la
+soluci'on del sistema.
+
+\textbf{Autovalores y radio espectral}. Un autovalor $\lambda$ y su
+correspondiente autovector $v \neq 0$ de una matriz $A$ son tales que 
+$Av=\lambda v$. Los autovalores tambi'en son las raizes del polinomio
+$\det(A-\lambda I)$. \\
+El radio espectral $\rho(A)$ se define como el m'aximo valor absoluto de un
+autovalor de la matriz $A$. \\
+$A$ es una matriz convergente si $\limite{k}{\infty} A^k = 0$. \\
+Propiedad: $\rho(A) \leq \norma{A}$ para toda norma inducida. \\
+Propiedad: $A$ es matriz convergente $\liff \rho(A) < 1$. \\
+Propiedad: Si $\norma{A} < 1$ entonces $I-A$ es no singular y 
+$(I-A)^{-1} = \sum_{k=0}^\infty A^k$.
+
+\textbf{M'etodos iterativos en general}. La idea es utilizar la iteraci'on
+$x^{(k+1)} = T x^{(k)} + c$ para hallar la soluci'on del sistema
+$x = T x + c$. \\
+Propiedad: Dicha sucesi'on converge $\liff \rho(T) < 1$. \\
+Propiedad: Si para una norma inducida $\norma{T} < 1$ entonces
+$x^{(k+1)} = T x^{(k)} + c$ converge y
+$\norma{x-x^k} \leq \norma{T}^k \norma{x^{(0)}-x}$.
+
+\textbf{Jacobi}. Dentro del esquema general, usaremos 
+$T = D^{-1}(L+U)$ y $c = D^{-1}b$ donde $A = D - L - U$, $D$ es diagonal y $L$
+y $U$ son triangular inferior y superior respectivamente con ceros en la
+diagonal. La idea sale de: 
+$Ax = b \liff (D-L-U)x = b \liff x = D^{-1}b + D^{-1}(L+U)x$.
+
+\textbf{Gauss Siedel}. Sea $A = D - L - U$ igual que antes. Usaremos 
+$T = (D-L)^{-1}U$ y $c = (D-L)^{-1}b$. Esto sale de $Ax = b \liff (D-L-U)x = b
+\liff x = (D-L)^{-1}Ux + (D-L)^{-1}b$.
+
+\textbf{Convergencias conocidas}. Si $A$ es estrictamente diagonal dominante,
+entonces Jacobi y Gauss Siedel convergen.
+
+\subsection{Direcciones conjugadas}
+
+\textbf{Direcciones conjugadas}. $n$ vectores $u_1$,...,$u_n$ se llaman 
+$A$-conjugados sii $\forall i \neq j\ u_i^t A u_j = 0$. Si adem'as
+$\forall i\ u_i^t A u_i = 1$ se llaman $A$-ortogonales.
+
+Supongamos que tenemos que resolver $Ax=b$ donde $A$ es sim'etrica y definida
+positiva. Sea $Q(x) = x^t A x - 2 x^t b$. Se ve que $\D Q(x) = 0$ y 
+$\He Q(x) = 2A$ es definido positivo, por lo cual $x$ es m'inimo de $Q$,
+entonces resolveremos el sistema buscando dicho m'inimo.
+
+Para esto utilizaremos una iteraci'on de la forma 
+$x_k = x_{k-1} + \alpha_{k-1} d_{k-1}$, donde $\alpha$ indica cu'anto me muevo
+y $d$ indica la direcci'on del movimiento. Si tengo dada la direcci'on, puedo
+plantear cuanto moverme buscando que $Q$ se minimice lo m'aximo posible. Como
+esto es una ecuaci'on en una variable, simplemente busco el cero de la
+derivada respecto de $\alpha$, que al resolverlo queda
+$\alpha_{k-1} = d_{k-1}^t(b-Ax_{k-1}) / d_{k-1}^tAd_{k-1}$. \\
+Propiedad: Si $d_0,...,d_{n-1}$ son $A$-ortogonales y eligiendo $\alpha$
+seg'un se explic'o, definiendo $x_i = x_{i-1} + d_{i-1} \alpha_{i-1}$ resulta 
+$Ax_n = b$. \\
+\note{dibujito de direcciones conjugadas} \\
+La idea es irse moviendo por direcciones conjugadas, que son linealmente
+independientes. Se puede ver como moverse una vez en cada ``coordenada''. \\
+Propiedad: Si elegimos $d_k = r_k + \beta_k d_{k-1}$ donde $r_k = b-Ax_k$ y
+$\beta_k = r_k^t A d_{k-1} / ( d_{k-1}^t A d_{k-1} )$ entonces las direcciones
+resultan $A$-ortogonales.
+
+\section{Sistemas no lineales}
+
+Los sistemas no lineales pueden verse como buscar ceros de funciones de varias
+variables. En particular, sea $F: \R^n \to \R^n$ (asumiendo que tenemos $n$
+variables y $n$ ecuaciones) e intentemos buscar sus ceros. Sea $x^*$ tal que
+$F(x^*)=0$.
+
+\textbf{Newton}. Podemos generalizar el m'etodo de Newton utilizando la
+ecuaci'on $F(x_k) + J(x_k)(x - x_k) \sim F(x)$, lo cual deriva en la 
+iteraci'on $x^{(k+1)} = x^{(k)} - J^{-1}(x^{(k)})F(x_k)$ donde $J$ es el
+jacobiano o la matriz diferencial de $F$. Multiplicar por la inversa de dicha
+matriz es el an'alogo a dividir por la derivada de Newton para 1 variable. \\
+Propiedad: Si $J(x^*)$ es no singular, $\norma{J^{-1}(x^*)} \leq \beta$, $J$
+es Lipschitz $F$ es $C^1$ en un intervalo alrededor de $x^*$, entonces
+el m'etodo converge cuadr'aticamente si $x_0$ est'a suficientemente cerca de
+$x$.
+
+\textbf{Criterio de Broyden}. Broyden puede verse como una generalizaci'on de
+secante a muchas dimensiones o tambi'en como una simplificaci'on de Newton, que
+en lugar de utilizar el Jacobiano, lo aproxima seg'un la 'ultima diferencia
+finita que tiene (es decir, toma $J(x_n)(x - x_n) \sim F(x) - F(x_{n-1})$).
+El problema es que, al contrario que en una dimensi'on, esto resulta en un
+sistema subdeterminado. Lo que Broyden propone es tomar la soluci'on que
+minimiza los cambios a la aproximaci'on del Jacobiano, de manera de obtener un
+m'etodo mas eficiente.
+\note{me queda la duda de si est'a bien as'i o hay que agregarle formalismo 
+(cuentitas)}
+
+\section{Ceros de funciones}
+
+El problema es encontrar los $x^*$ tal que $f(x^*) = 0$ para una funci'on dada
+$f$. Hay m'etodos particulares varias familias particulares de funciones, pero 
+nos concentraremos en m'etodos ``generales'', para familias grandes.
+
+Un algoritmo que busca ceros de funciones genera una sucesi'on de resultados
+$x_n$ de manera que $\limite{n}{\infty} x_n = x^*$.
+
+\textbf{Convergencia $p$}. La sucesi'on $x_n$ tiene convergencia $p$ si existe
+un $k$ tal que:
+$$\limite{n}{\infty} \ell_{n+1} / \ell_n = c \neq 0 \mbox{ donde }
+	\ell_n = |x_n - x^*| \mbox{, y } \ell_{n+1} \leq k\ {\ell_n} ^ p.$$
+Si $p=1$ decimos convergencia lineal, si $p=2$, cuadr'atica.
+Si $\limite{n}{\infty} \ell_{n+1} / \ell_n = 0$ la convergencia
+es superlineal (mejor que lineal pero peor que cuadr'atica).
+
+\textbf{Criterios de parada}.
+\begin{items}
+\item Error absoluto $|x_n - x_{n-1}| < \eps$.
+\item Error relativo $|x_n - x_{n-1}| / |x_n| < \eps$.
+\item Error sobre la funci'on $|f(x_n)| < \eps$.
+\item Sobre diferencia de funciones $|f(x_n) - f(x_{n-1})| < \eps$.
+\item Sobre diferencia de funciones con error relativo 
+	$|f(x_n) - f(x_{n-1})| / |f(x_n)| < \eps$.
+\end{items}
+
+\textbf{Bisecci'on}. Se basa en el teorema de Bolzano: Dada $f : [a,b] \to \R,
+f(a)f(b) < 0, \exists c \in (a,b)\mbox{ tq }f(c) = 0$. Algoritmo: \\
+\caja{Sean $a$ y $b$ tal que $f(a)f(b) < 0$. \\
+Mientras se desee mas precisi'on \\
+\tab Si $f((a+b)/2)f(b) > 0$ \\
+\tab\tab $a = (a+b)/2$ \\
+\tab sino \\
+\tab\tab $b = (a+b)/2$. \\
+Devolver $(a+b)/2$}
+Propiedad: La convergencia del m'etodo de bisecci'on es lineal.
+
+\textbf{Punto Fijo}. Decimos punto fijo de una funci'on $g$ al punto $x^*$ tal
+que $g(x^*) = x^*$. Si queremos buscar los ceros de $f$ podemos definir 
+$g(x) = f(x) + x$ de manera que los puntos fijos de $g$ son los ceros de $f$.
+Tambi'en podemos hacer $g(x) = $ cualquier forma de despejar $x$ en la 
+expresi'on $f(x) = 0$. \\
+Propiedad: Si $g : [a,b] \to [a,b]$ es continua entonces tiene un punto fijo.
+Importante notar que la imagen de $[a,b]$ tiene que ser $[a,b]$ cerrado!.
+Si adem'as $|g'(x)| \leq K < 1$ para todo $a \leq x \leq b$ entonces el punto
+fijo es 'unico. \\
+Algoritmo: Ir haciendo $x_n = g(x_{n-1})$. \\
+Propiedad: Si $g : [a,b] \to [a,b]$ es continua y $|g'(x)| \leq K < 1$
+entonces el algoritmo converge al 'unico punto fijo. \\
+Propiedad: Si $g$ es como en la propiedad anterior y 
+$g'(p) = ... = g^{(n-1)}(p) = 0$ entonces la convergencia del algoritmo es por 
+lo menos $n$.
+\note{agregar grafiquito de punto fijo}
+
+\textbf{Algoritmo de Newton}. 
+En particular veamos el punto fijo de $g(x) = x-h(x)f(x)$. Si $g(x^*) = x^*$
+entonces $h(x^*)f(x^*)=0$ y si $h(x^*) \neq 0$, entonces $x^*$ es cero de $f$.
+En particular, $g'(x) = 1-h'(x)f(x)-h(x)f'(x)$. Como queremos una derivada
+igual a $0$ (para asegurar convergencia cuadr'atica) precisar'iamos
+$0 = g'(x^*) = 1-h(x^*)f'(x^*)$, entonces tomemos $h(x) = 1/f'(x) \lthen 
+g(x) = x-f(x)/f'(x)$. \\
+Propiedad: Sea $f \in C^2 [a,b], x^* \in [a,b], f(x^*) = 0$ y $f'(x^*) \neq
+0$. Existe un $\delta>0$ tal que la sucesi'on $x_{n+1} = x_n - f(x_n)/f'(x_n)$ 
+converge a $x^*$ si $x_0 \in (x^* - \delta, x^* + \delta)$. \\
+Propiedad: Si $f$ adem'as es creciente y convexa, entonces tiene un 'unico
+cero y el algoritmo de newton converge a el para todo $x_0$. \\
+Tambi'en podemos interpretar Newton desde el polinomio de Taylor, ya que
+$0 = f(x) \sim f(x_0) + f'(x_0)(x - x_0) \lthen x = f(x_0) / f'(x_0) + x_0$. \\
+Observaci'on: Si hay ceros m'ultiples la convergencia cuadr'atica puede
+perderse.
+
+\textbf{M'etodo de la secante}.
+La idea es aproximar la derivada de Newton por una diferencia finita dividida.
+Tambi'en puede verse como tomar la recta secante a los 'ultimos dos puntos
+encontrados (derivada estimada) y utilizar como nuevo punto su intersecci'on
+con la funci'on.
+$$x_{n+1} = x_n - f(x_n) \frac{x_n - x_{n-1}}{f(x_n) - f(x_{n-1})}$$
+La convergencia de este m'etodo es $\varphi = (1+\sqrt{5})/2$ si se eligen los
+puntos iniciales suficientemente cerca del buscado.
+
+\textbf{M'etodo Regula Falsi}. Es como bisecci'on pero en lugar de elegir el
+punto siguiente como el promedio de los lados $c = (a+b)/2$, elige la
+intersecci'on de la recta secante que une $(a,f(a))$ con $(b,f(b))$. 
+Formalmente $c = (f(b)a - f(a)b)/(f(b)-f(a))$. El m'etodo recibe su nombre del
+hecho de que no necesariamente converge bien, aunque lo pareciera.
+
+\section{Interpolaci\'on}
+
+La interpolaci'on es, dados pares de valores $(x_1,y_1),...,(x_n,y_n)$ 
+(mediciones), encontrar una funci'on $f$ tal que $\forall i\ f(x_i) = y_i$. En
+particular la interpolaci'on polin'omica es cuando las funciones $f$ que
+podemos elegir se restringen a polinomios.
+
+\textbf{Polinomio de Lagrange}. El Polinomio de Lagrange es el 'unico polinomio 
+de grado m'inimo que interpola un conjunto de puntos $(x_i,y_i)$. Est'a
+definido por
+$$p(x)=\sum_i \left( y_i \prod_{j \neq i} \frac{x - x_j}{x_i - x_j} \right).$$
+Propiedad: Si todo $x_i \in [a,b]$ y $f$ es $C^{n+1}$ entonces para todo $x$ 
+existe $\xi_x \in (a,b)$ tal que 
+$f(x) = p(x) + f^{(n+1)}(\xi_x) \prod_i (x-x_i) / (n+1)!$. 
+
+\textbf{Diferencias divididas}. Es una forma recursiva de escribir el
+polinomio de lagrange. Sirve para hacerlo incrementalmente. Supongamos que
+el polinomio es $p(x) = \sum_{i=0}^n a_i \prod_{j < i+1} (x - x_j)$. La idea es
+definir
+$f[x_i x_{i+1} ... x_{i+k}] = (f[x_{i+1} ... x_{i+k}] - f[x_i ... x_{i+k-1}])
+	/ (x_{i+k} - x_i)$ y $f[x_i] = f(x_i)$. Se puede ver que el coeficiente
+$a_k$ debe ser $f[x_1 ... x_{k-1}]$.
+
+\textbf{Splines}. La idea de un spline es interpolar con polinomios, pero 
+'estos pueden ser distintos para cada pareja de mediciones consecutivas
+(asumimos que $x_1 < x_2 < ... < x_n$. Buscaremos entonces polinomios
+$p_1,...,p_{n-1}$ tal que para todo $i$ se cumpla $p_i(x_i) = y_i$ y 
+$p_i(x_{i+1}) = y_{i+1}$ (1). Si los polinomios son de grado $1$ (rectas) 
+estas ecuaciones completamente los definen. Si vamos a grados mas grandes,
+necesitamos mas ecuaciones para definirlos. En particular, para que la curva
+sea suave podemos pedir $p_i'(x_{i+1}) = p_{i+1}'(x_{i+1})$ (2) o lo mismo
+para la derivada segunda, tercera, etc'etera. En particular consideremos los
+splines c'ubicos (con polinomios de grado 3). Cada polinomio introduce $4$ 
+variables (sus 4 coeficientes). Tenemos $2n-2$ ecuaciones de tipo (1) y 
+$n-2$ ecuaciones de tipo (2). Si igualamos en los puntos intermedios tanto
+la derivada primera como la segunda, esto nos da $2n-2 + n-2 + n-2$ = $4n-6$
+ecuaciones para nuestras $4n-4$ variables ($4$ para cada uno de los $n-1$
+polinomios). Las 2 ecuaciones que hacen falta se completan seg'un el tipo de
+spline. Natural: Las derivadas segundas en los extremos son cero.
+Sujeto: La derivada primera en cada extremo se iguala a la derivada de la
+funci'on original. Se puede demostrar en ambos casos que el sistema planteado
+tiene siempre una 'unica soluci'on.
+
+\section{Cuadrados m'inimos}
+
+El problema de cuadrados m'inimos es encontrar, dadas mediciones 
+$(x_1,y_1),...,(x_n,y_n)$ una funci'on $f$ tal que minimice el error
+cuadr'atico medio $\sum_i (f(x_i)-y_i)^2$.
+
+\textbf{Cuadrados m'inimos lineales}. El problema de cuadrados m'inimos
+lineales es cuando restringimos la funci'on $f$ a una funci'on lineal. Puedo
+encontrar $f$ planteado minimizar $\sum_i (a x_i + b - y_i)^2$ como funci'on
+de $a$ y $b$ e igualando el gradiente de dicha expresi'on a $0$.
+
+\textbf{Cuadrados m'inimos polinomiales}. Aqu'i restringimos $f$ a los
+polinomios de cierto grado m'aximo. Tambi'en se resuelve mediante un sistema
+lineal, que resulta escribir la expresi'on a minimizar en funci'on de los
+coeficientes de $f$ y luego igualar el gradiente a $0$.
+
+Ahora generalicemos el problema a muchas variables: Tenemos una tabla de
+valores 
+$$(x_1^{(1)},x_2^{(1)},...,x_k^{(1)},y^{(1)}),...,
+(x_1^{(n)},x_2^{(n)},...,x_k^{(n)},y^{(n)})$$
+ y queremos la funci'on $f$ que
+minimiza $\sum_i (f(x_1^{(i)},...,x_k^{(i)})-y_i)^2$.
+
+\textbf{Cuadrados m'inimos lineales en varias variables}. Si restringimos $f$
+a funciones lineales, podemos ver que el problema se trata de encontrar un
+$x$ que minimiza $\norma{Ax-b}^2$ donde $A$ es la matriz de $n \times k$ donde 
+$A_{i,j} = x_j^{(i)}$ y $b_i = y_i$. \\
+Propiedad: El problema de cuadrados m'inimos lineales siempre tiene soluci'on.
+La soluci'on es 'unica $\liff$ no existe un vector $v$ no nulo tal que 
+$Av = 0$. \\
+Propiedad: Si $x$ es la soluci'on de cuadrados m'inimos lineales, entonces
+$A^t A x = A^t b$. \\
+Esta 'ultima propiedad da una forma de resolver el problema, resolviendo el
+sistema $A^t A x = A^t b$ utilizando alg'un m'etodo ya visto ($LU$, $QR$, 
+etc). \\
+Observaci'on: $A^t A$ es sim'etrica y semi definida positiva, lo cual trae
+problemas num'ericos al resolver el sistema.
+
+\section{C'alculo de autovalores}
+
+Propiedad: Si A y B son similares (i.e., existe $S$ tq $S^{-1}BS = B$) tienen
+los mismos autovalores. \\
+Teorema: Sea $R_i = \{z |\ |z-A_{i,i}| \leq \sum_{j \neq i} A_{i,j}\}$. Si
+$\left(\bigcup_{i \in K} R_i\right) \cap \left(\bigcup_{i \notin K} R_i\right)
+	= \emptyset \lthen$
+en $\bigcup_{i \in K} R_i$ hay $|K|$ autovalores de $A$.
+
+\textbf{M'etodo de la potencia}. Si tengo una base de autovectores 
+$<v_1,...,v_n>$ para todo $x$ existen $\beta_1,...,\beta_n$ tal que
+$x = \sum_i \beta_i v_i$. Fijo un $x$. \\
+\begin{eqnarray*}
+x &=& \sum \beta_i v_i \\
+Ax &=& \sum \beta_i A v_i = \sum \lambda_i \beta_i v_i \\
+A^kx &=& \sum \lambda_i^k \beta_i v_i = 
+	\lambda_1^k \sum (\lambda_i/\lambda_1)^k \beta_i v_i = 
+		\lambda_1^k (\beta_1 v_i + \eps^{(k)}), \\
+\end{eqnarray*}
+donde $\eps$ tiende a $0$. ($\lambda_1$ es el autovalor mas grande en valor
+absoluto). Sea $x^{(k)} = A^k x$. Sea $f$ continua tal que 
+$f(\alpha x) = \alpha f(x)$ y $f(\beta_1 v_1) \neq 0$. Entonces
+$$\limite{k}{\infty} f(x^{(k+1)}) / f(x^{(k)}) = \lambda_1 
+  f(\beta_1 v_1 + \eps^{(k+1)}) / f(\beta_1 v_1 + \eps^{(k+1)}) = \lambda_1.$$
+  
+\textbf{M'etodo de la potencia inversa}. (Sirve si $\lambda_n$ es el autovalor
+de menor valor absoluto y distinto de cero de $A$ no singular). 
+Si $\lambda$ es autovalor de $A$, 
+$\lambda^{-1}$ lo es de $A^{-1}$. $Ax = \lambda x \lthen  A^{-1} Ax = 
+\lambda A^{-1} x \lthen x = \lambda A^{-1} x \lthen \lambda^{-1} x = A^{-1} x$.
+Utilizando $x^{(k+1)} = A^{-1} x^k$ se puede demostrar que 
+$f(x^{(k+1)}) / f(x^{(k)})$ tiende a $1/\lambda_n$.
+
+\textbf{Encontrar todos los autovalores}. Una vez que encontre $\lambda_1$ me
+busco $Q$ ortonormal tal que $QAQ^{-1}$, que tiene los mismos autovalores que
+$A$, tenga todos ceros en la primer columna por debajo de la diagonal y 
+$\lambda_1$ en la esquina superior izquierda (ver factorizaci'on QR). De este
+modo, la submatriz $A'$ que resulta de tachar la primer fila y columna tiene
+todos los autovalores excepto $\lambda_1$, as'i puedo obtener el segundo
+m'as grande y repetir.
+
+\label{theend}
+\end{document}
